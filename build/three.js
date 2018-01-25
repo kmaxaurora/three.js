@@ -16176,17 +16176,17 @@
 
 			// allocate the next position in the appropriate array
 
-			if ( material.transparent ) {
+			/*if ( material.transparent ) {
 
 				array = transparent;
 				index = ++ transparentLastIndex;
 
-			} else {
+			} else {*/
 
-				array = opaque;
-				index = ++ opaqueLastIndex;
+			array = opaque;
+			index = ++ opaqueLastIndex;
 
-			}
+			//}
 
 			// recycle existing render item or grow the array
 
