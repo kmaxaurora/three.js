@@ -889,6 +889,19 @@ function WebGLRenderer( parameters ) {
 
 		}
 
+		// Render twice, first only to depth buffer to prevent backface artifacts
+		if( material.transparent ){
+			_gl.colorMask( false, false, false, false );
+			_rendererHelper( geometry, drawStart, drawCount );
+			_gl.colorMask( true, true, true, true) ;
+			_rendererHelper( geometry, drawStart, drawCount );
+		} else {
+			_rendererHelper( geometry, drawStart, drawCount );
+		}
+
+	};
+
+	function _rendererHelper( geometry, drawStart, drawCount ) {
 		if ( geometry && geometry.isInstancedBufferGeometry ) {
 
 			if ( geometry.maxInstancedCount > 0 ) {
@@ -902,8 +915,7 @@ function WebGLRenderer( parameters ) {
 			renderer.render( drawStart, drawCount );
 
 		}
-
-	};
+	}
 
 	function setupVertexAttributes( material, program, geometry, startIndex ) {
 
