@@ -3701,7 +3701,7 @@
         },
         "divideScalar": {
           "!type": "fn(s: number) -> +THREE.Vector2",
-          "!doc": "Divides this vector by scalar *s*.<br>\n\t\tSet vector to *( 0, 0 )* if *s == 0*."
+          "!doc": "Divides this vector by scalar *s*."
         },
         "negate": {
           "!type": "fn() -> +THREE.Vector2",
@@ -3863,7 +3863,7 @@
         },
         "divideScalar": {
           "!type": "fn(s: number) -> +THREE.Vector3",
-          "!doc": "Divides this vector by scalar *s*.<br>\n\t\tSet vector to *( 0, 0, 0 )* if *s == 0*."
+          "!doc": "Divides this vector by scalar *s*."
         },
         "negate": {
           "!type": "fn() -> +THREE.Vector3",
@@ -4094,7 +4094,7 @@
         },
         "divideScalar": {
           "!type": "fn(s: number) -> +THREE.Vector4",
-          "!doc": "Divides this vector by scalar *s*.<br>\n\t\tSet vector to *( 0, 0, 0 )* if *s == 0*."
+          "!doc": "Divides this vector by scalar *s*."
         },
         "negate": {
           "!type": "fn() -> +THREE.Vector4",
