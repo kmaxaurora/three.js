@@ -11,33 +11,53 @@ import { WebGPUNodeSampledTexture } from './WebGPUNodeSampledTexture.js';
 import WebGPUUniformBuffer from '../WebGPUUniformBuffer.js';
 import { getVectorLength, getStrideLength } from '../WebGPUBufferUtils.js';
 
-import VarNode from '../../nodes/core/VarNode.js';
-import CodeNode from '../../nodes/core/CodeNode.js';
-import BypassNode from '../../nodes/core/BypassNode.js';
-import ExpressionNode from '../../nodes/core/ExpressionNode.js';
-import NodeBuilder from '../../nodes/core/NodeBuilder.js';
-import MaterialNode from '../../nodes/accessors/MaterialNode.js';
-import PositionNode from '../../nodes/accessors/PositionNode.js';
-import NormalNode from '../../nodes/accessors/NormalNode.js';
-import ModelViewProjectionNode from '../../nodes/accessors/ModelViewProjectionNode.js';
-import SkinningNode from '../../nodes/accessors/SkinningNode.js';
-import ColorSpaceNode from '../../nodes/display/ColorSpaceNode.js';
-import LightContextNode from '../../nodes/lights/LightContextNode.js';
-import OperatorNode from '../../nodes/math/OperatorNode.js';
-import WGSLNodeParser from '../../nodes/parsers/WGSLNodeParser.js';
-import { join, nodeObject } from '../../nodes/ShaderNode.js';
-import { getRoughness } from '../../nodes/functions/PhysicalMaterialFunctions.js';
+import VarNode from 'three-nodes/core/VarNode.js';
+import CodeNode from 'three-nodes/core/CodeNode.js';
+import BypassNode from 'three-nodes/core/BypassNode.js';
+import ExpressionNode from 'three-nodes/core/ExpressionNode.js';
+import NodeBuilder from 'three-nodes/core/NodeBuilder.js';
+import MaterialNode from 'three-nodes/accessors/MaterialNode.js';
+import PositionNode from 'three-nodes/accessors/PositionNode.js';
+import NormalNode from 'three-nodes/accessors/NormalNode.js';
+import ModelViewProjectionNode from 'three-nodes/accessors/ModelViewProjectionNode.js';
+import SkinningNode from 'three-nodes/accessors/SkinningNode.js';
+import ColorSpaceNode from 'three-nodes/display/ColorSpaceNode.js';
+import LightContextNode from 'three-nodes/lights/LightContextNode.js';
+import OperatorNode from 'three-nodes/math/OperatorNode.js';
+import WGSLNodeParser from 'three-nodes/parsers/WGSLNodeParser.js';
+import { vec3, add, join, mix, nodeObject } from 'three-nodes/ShaderNode.js';
+import { getRoughness } from 'three-nodes/functions/PhysicalMaterialFunctions.js';
 
 const wgslTypeLib = {
 	float: 'f32',
 	int: 'i32',
+	uint: 'u32',
+	bool: 'bool',
+	
 	vec2: 'vec2<f32>',
+	ivec2: 'vec2<i32>',
+	uvec2: 'vec2<u32>',
+	bvec2: 'vec2<bool>',
+	
 	vec3: 'vec3<f32>',
-	vec4: 'vec4<f32>',
-	uvec4: 'vec4<u32>',
+	ivec3: 'vec3<i32>',
+	uvec3: 'vec3<u32>',
 	bvec3: 'vec3<bool>',
+	
+	vec4: 'vec4<f32>',
+	ivec4: 'vec4<i32>',
+	uvec4: 'vec4<u32>',
+	bvec4: 'vec4<bool>',
+	
 	mat3: 'mat3x3<f32>',
-	mat4: 'mat4x4<f32>'
+	imat3: 'mat3x3<i32>',
+	umat3: 'mat3x3<u32>',
+	bmat3: 'mat3x3<bool>',
+	
+	mat4: 'mat4x4<f32>',
+	imat4: 'mat4x4<i32>',
+	umat4: 'mat4x4<u32>',
+	bmat4: 'mat4x4<bool>'
 };
 
 const wgslMethods = {
@@ -57,6 +77,16 @@ fn lessThanEqual( a : vec3<f32>, b : vec3<f32> ) -> vec3<bool> {
 fn mod( x : f32, y : f32 ) -> f32 {
 
 	return x - y * floor( x / y );
+
+}
+` ),
+
+	smoothstep: new CodeNode( `
+fn smoothstep( low : f32, high : f32, x : f32 ) -> f32 {
+
+	let t = clamp( ( x - low ) / ( high - low ), 0.0, 1.0 );
+
+	return t * t * ( 3.0 - 2.0 * t );
 
 }
 ` ),
@@ -80,18 +110,25 @@ fn inversesqrt( x : f32 ) -> f32 {
 
 class WebGPUNodeBuilder extends NodeBuilder {
 
-	constructor( object, renderer, lightNode = null ) {
+	constructor( object, renderer ) {
 
 		super( object, renderer, new WGSLNodeParser() );
 
-		this.lightNode = lightNode;
+		this.lightNode = null;
+		this.fogNode = null;
 
 		this.bindings = { vertex: [], fragment: [] };
 		this.bindingsOffset = { vertex: 0, fragment: 0 };
 
 		this.uniformsGroup = {};
 
+	}
+
+	build() {
+
 		this._parseObject();
+
+		return super.build();
 
 	}
 
@@ -264,13 +301,25 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 			}
 
-			// RESULT
+			// OUTGOING LIGHT
 
-			const outputNodeObj = nodeObject( outputNode );
+			let outgoingLightNode = vec3( outputNode );
 
-			outputNode = join( outputNodeObj.x, outputNodeObj.y, outputNodeObj.z, nodeObject( diffuseColorNode ).w );
+			// EMISSIVE
 
-			//
+			const emissiveNode = material.emissiveNode;
+
+			if ( emissiveNode && emissiveNode.isNode ) {
+
+				outgoingLightNode = add( emissiveNode, outgoingLightNode );
+
+			}
+
+			// OUTPUT
+
+			outputNode = join( vec3( outgoingLightNode ), nodeObject( diffuseColorNode ).w );
+
+			// ENCODING
 
 			const outputEncoding = this.renderer.outputEncoding;
 
@@ -280,6 +329,18 @@ class WebGPUNodeBuilder extends NodeBuilder {
 				outputNode.fromEncoding( outputEncoding );
 
 			}
+
+			// FOG
+
+			const fogNode = this.fogNode;
+
+			if ( fogNode && fogNode.isFogNode ) {
+
+				outputNode = mix( outputNode, fogNode.colorNode, fogNode );
+
+			}
+
+			// RESULT
 
 			this.addFlow( 'fragment', new VarNode( outputNode, 'Output', 'vec4' ) );
 

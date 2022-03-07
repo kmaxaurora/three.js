@@ -18,9 +18,11 @@ import { SliderEditor } from './inputs/SliderEditor.js';
 import { ColorEditor } from './inputs/ColorEditor.js';
 import { TextureEditor } from './inputs/TextureEditor.js';
 import { BlendEditor } from './display/BlendEditor.js';
+import { NormalMapEditor } from './display/NormalMapEditor.js';
 import { UVEditor } from './accessors/UVEditor.js';
 import { PositionEditor } from './accessors/PositionEditor.js';
 import { NormalEditor } from './accessors/NormalEditor.js';
+import { PreviewEditor } from './utils/PreviewEditor.js';
 import { TimerEditor } from './utils/TimerEditor.js';
 import { OscillatorEditor } from './utils/OscillatorEditor.js';
 import { SplitEditor } from './utils/SplitEditor.js';
@@ -104,6 +106,11 @@ export const NodeList = [
 				name: 'Blend',
 				icon: 'layers-subtract',
 				nodeClass: BlendEditor
+			},
+			{
+				name: 'Normal Map',
+				icon: 'chart-line',
+				nodeClass: NormalMapEditor
 			}
 		]
 	},
@@ -120,7 +127,7 @@ export const NodeList = [
 				name: 'Invert',
 				icon: 'flip-vertical',
 				tip: 'Negate',
-				nodeClass: OperatorEditor
+				nodeClass: InvertEditor
 			},
 			{
 				name: 'Limiter',
@@ -172,6 +179,11 @@ export const NodeList = [
 		name: 'Utils',
 		icon: 'apps',
 		children: [
+			{
+				name: 'Preview',
+				icon: 'square-check',
+				nodeClass: PreviewEditor
+			},
 			{
 				name: 'Timer',
 				icon: 'clock',
@@ -250,6 +262,7 @@ export const ClassLib = {
 	ColorEditor,
 	TextureEditor,
 	BlendEditor,
+	NormalMapEditor,
 	UVEditor,
 	PositionEditor,
 	NormalEditor,

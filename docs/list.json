@@ -134,6 +134,7 @@
 
 			"Geometries": {
 				"BoxGeometry": "api/en/geometries/BoxGeometry",
+				"CapsuleGeometry": "api/en/geometries/CapsuleGeometry",
 				"CircleGeometry": "api/en/geometries/CircleGeometry",
 				"ConeGeometry": "api/en/geometries/ConeGeometry",
 				"CylinderGeometry": "api/en/geometries/CylinderGeometry",
@@ -283,10 +284,11 @@
 
 			"Renderers": {
 				"WebGLMultipleRenderTargets": "api/en/renderers/WebGLMultipleRenderTargets",
-				"WebGLMultisampleRenderTarget": "api/en/renderers/WebGLMultisampleRenderTarget",
 				"WebGLRenderer": "api/en/renderers/WebGLRenderer",
 				"WebGL1Renderer": "api/en/renderers/WebGL1Renderer",
 				"WebGLRenderTarget": "api/en/renderers/WebGLRenderTarget",
+				"WebGL3DRenderTarget": "api/en/renderers/WebGL3DRenderTarget",
+				"WebGLArrayRenderTarget": "api/en/renderers/WebGLArrayRenderTarget",
 				"WebGLCubeRenderTarget": "api/en/renderers/WebGLCubeRenderTarget"
 			},
 
@@ -311,9 +313,9 @@
 				"CanvasTexture": "api/en/textures/CanvasTexture",
 				"CompressedTexture": "api/en/textures/CompressedTexture",
 				"CubeTexture": "api/en/textures/CubeTexture",
+				"Data3DTexture": "api/en/textures/Data3DTexture",
+				"DataArrayTexture": "api/en/textures/DataArrayTexture",
 				"DataTexture": "api/en/textures/DataTexture",
-				"DataTexture2DArray": "api/en/textures/DataTexture2DArray",
-				"DataTexture3D": "api/en/textures/DataTexture3D",
 				"DepthTexture": "api/en/textures/DepthTexture",
 				"FramebufferTexture": "api/en/textures/FramebufferTexture",
 				"Source": "api/en/textures/Source",
@@ -389,7 +391,8 @@
 			"Exporters": {
 				"GLTFExporter": "examples/en/exporters/GLTFExporter",
 				"PLYExporter": "examples/en/exporters/PLYExporter",
-				"ColladaExporter": "examples/en/exporters/ColladaExporter"
+				"ColladaExporter": "examples/en/exporters/ColladaExporter",
+				"EXRExporter": "examples/en/exporters/EXRExporter"
 			},
 
 			"Math": {
@@ -783,7 +786,6 @@
 
 			"渲染器": {
 				"WebGLMultipleRenderTargets": "api/zh/renderers/WebGLMultipleRenderTargets",
-				"WebGLMultisampleRenderTarget": "api/zh/renderers/WebGLMultisampleRenderTarget",
 				"WebGLRenderer": "api/zh/renderers/WebGLRenderer",
 				"WebGL1Renderer": "api/zh/renderers/WebGL1Renderer",
 				"WebGLRenderTarget": "api/zh/renderers/WebGLRenderTarget",
@@ -811,9 +813,9 @@
 				"CanvasTexture": "api/zh/textures/CanvasTexture",
 				"CompressedTexture": "api/zh/textures/CompressedTexture",
 				"CubeTexture": "api/zh/textures/CubeTexture",
+				"DataArrayTexture": "api/zh/textures/DataArrayTexture",
+				"Data3DTexture": "api/zh/textures/Data3DTexture",
 				"DataTexture": "api/zh/textures/DataTexture",
-				"DataTexture2DArray": "api/zh/textures/DataTexture2DArray",
-				"DataTexture3D": "api/zh/textures/DataTexture3D",
 				"DepthTexture": "api/zh/textures/DepthTexture",
 				"FramebufferTexture": "api/zh/textures/FramebufferTexture",
 				"Source": "api/zh/textures/Source",

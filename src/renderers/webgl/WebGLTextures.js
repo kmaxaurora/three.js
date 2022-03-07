@@ -10,8 +10,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 	const maxCubemapSize = capabilities.maxCubemapSize;
 	const maxTextureSize = capabilities.maxTextureSize;
 	const maxSamples = capabilities.maxSamples;
-	const hasMultisampledRenderToTexture = extensions.has( 'WEBGL_multisampled_render_to_texture' );
-	const MultisampledRenderToTextureExtension = hasMultisampledRenderToTexture ? extensions.get( 'WEBGL_multisampled_render_to_texture' ) : undefined;
+	const multisampledRTTExt = extensions.has( 'WEBGL_multisampled_render_to_texture' ) ? extensions.get( 'WEBGL_multisampled_render_to_texture' ) : null;
 
 	const _videoTextures = new WeakMap();
 	let _canvas;
@@ -427,7 +426,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		if ( texture.isVideoTexture ) updateVideoTexture( texture );
 
-		if ( texture.version > 0 && textureProperties.__version !== texture.version ) {
+		if ( texture.isRenderTargetTexture === false && texture.version > 0 && textureProperties.__version !== texture.version ) {
 
 			const image = texture.image;
 
@@ -663,8 +662,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		let textureType = _gl.TEXTURE_2D;
 
-		if ( texture.isDataTexture2DArray ) textureType = _gl.TEXTURE_2D_ARRAY;
-		if ( texture.isDataTexture3D ) textureType = _gl.TEXTURE_3D;
+		if ( texture.isDataArrayTexture ) textureType = _gl.TEXTURE_2D_ARRAY;
+		if ( texture.isData3DTexture ) textureType = _gl.TEXTURE_3D;
 
 		const forceUpload = initTexture( textureProperties, texture );
 		const source = texture.source;
@@ -804,7 +803,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 						if ( useTexStorage ) {
 
-							state.texSubImage2D( _gl.TEXTURE_2D, 0, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data );
+							state.texSubImage2D( _gl.TEXTURE_2D, i, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data );
 
 						} else {
 
@@ -884,7 +883,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				}
 
-			} else if ( texture.isDataTexture2DArray ) {
+			} else if ( texture.isDataArrayTexture ) {
 
 				if ( useTexStorage ) {
 
@@ -902,7 +901,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				}
 
-			} else if ( texture.isDataTexture3D ) {
+			} else if ( texture.isData3DTexture ) {
 
 				if ( useTexStorage ) {
 
@@ -1233,9 +1232,10 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		}
 
 		state.bindFramebuffer( _gl.FRAMEBUFFER, framebuffer );
-		if ( renderTarget.useRenderToTexture ) {
 
-			MultisampledRenderToTextureExtension.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, attachment, textureTarget, properties.get( texture ).__webglTexture, 0, getRenderTargetSamples( renderTarget ) );
+		if ( useMultisampledRTT( renderTarget ) ) {
+
+			multisampledRTTExt.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, attachment, textureTarget, properties.get( texture ).__webglTexture, 0, getRenderTargetSamples( renderTarget ) );
 
 		} else {
 
@@ -1257,7 +1257,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			let glInternalFormat = _gl.DEPTH_COMPONENT16;
 
-			if ( isMultisample || renderTarget.useRenderToTexture ) {
+			if ( isMultisample || useMultisampledRTT( renderTarget ) ) {
 
 				const depthTexture = renderTarget.depthTexture;
 
@@ -1277,9 +1277,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				const samples = getRenderTargetSamples( renderTarget );
 
-				if ( renderTarget.useRenderToTexture ) {
+				if ( useMultisampledRTT( renderTarget ) ) {
 
-					MultisampledRenderToTextureExtension.renderbufferStorageMultisampleEXT( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
+					multisampledRTTExt.renderbufferStorageMultisampleEXT( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
 
 				} else {
 
@@ -1299,13 +1299,13 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			const samples = getRenderTargetSamples( renderTarget );
 
-			if ( isMultisample && renderTarget.useRenderbuffer ) {
+			if ( isMultisample && useMultisampledRTT( renderTarget ) === false ) {
 
 				_gl.renderbufferStorageMultisample( _gl.RENDERBUFFER, samples, _gl.DEPTH24_STENCIL8, renderTarget.width, renderTarget.height );
 
-			} else if ( renderTarget.useRenderToTexture ) {
+			} else if ( useMultisampledRTT( renderTarget ) ) {
 
-				MultisampledRenderToTextureExtension.renderbufferStorageMultisampleEXT( _gl.RENDERBUFFER, samples, _gl.DEPTH24_STENCIL8, renderTarget.width, renderTarget.height );
+				multisampledRTTExt.renderbufferStorageMultisampleEXT( _gl.RENDERBUFFER, samples, _gl.DEPTH24_STENCIL8, renderTarget.width, renderTarget.height );
 
 			} else {
 
@@ -1326,13 +1326,13 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			const glInternalFormat = getInternalFormat( texture.internalFormat, glFormat, glType, texture.encoding );
 			const samples = getRenderTargetSamples( renderTarget );
 
-			if ( isMultisample && renderTarget.useRenderbuffer ) {
+			if ( isMultisample && useMultisampledRTT( renderTarget ) === false ) {
 
 				_gl.renderbufferStorageMultisample( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
 
-			} else if ( renderTarget.useRenderToTexture ) {
+			} else if ( useMultisampledRTT( renderTarget ) ) {
 
-				MultisampledRenderToTextureExtension.renderbufferStorageMultisampleEXT( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
+				multisampledRTTExt.renderbufferStorageMultisampleEXT( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
 
 			} else {
 
@@ -1378,9 +1378,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		if ( renderTarget.depthTexture.format === DepthFormat ) {
 
-			if ( renderTarget.useRenderToTexture ) {
+			if ( useMultisampledRTT( renderTarget ) ) {
 
-				MultisampledRenderToTextureExtension.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, _gl.DEPTH_ATTACHMENT, _gl.TEXTURE_2D, webglDepthTexture, 0, samples );
+				multisampledRTTExt.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, _gl.DEPTH_ATTACHMENT, _gl.TEXTURE_2D, webglDepthTexture, 0, samples );
 
 			} else {
 
@@ -1390,9 +1390,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		} else if ( renderTarget.depthTexture.format === DepthStencilFormat ) {
 
-			if ( renderTarget.useRenderToTexture ) {
+			if ( useMultisampledRTT( renderTarget ) ) {
 
-				MultisampledRenderToTextureExtension.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, _gl.DEPTH_STENCIL_ATTACHMENT, _gl.TEXTURE_2D, webglDepthTexture, 0, samples );
+				multisampledRTTExt.framebufferTexture2DMultisampleEXT( _gl.FRAMEBUFFER, _gl.DEPTH_STENCIL_ATTACHMENT, _gl.TEXTURE_2D, webglDepthTexture, 0, samples );
 
 			} else {
 
@@ -1492,7 +1492,6 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		const isCube = ( renderTarget.isWebGLCubeRenderTarget === true );
 		const isMultipleRenderTargets = ( renderTarget.isWebGLMultipleRenderTargets === true );
-		const isRenderTarget3D = texture.isDataTexture3D || texture.isDataTexture2DArray;
 		const supportsMips = isPowerOfTwo( renderTarget ) || isWebGL2;
 
 		// Setup framebuffer
@@ -1537,40 +1536,31 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 				}
 
-			} else if ( renderTarget.useRenderbuffer ) {
+			} else if ( ( isWebGL2 && renderTarget.samples > 0 ) && useMultisampledRTT( renderTarget ) === false ) {
 
-				if ( isWebGL2 ) {
+				renderTargetProperties.__webglMultisampledFramebuffer = _gl.createFramebuffer();
+				renderTargetProperties.__webglColorRenderbuffer = _gl.createRenderbuffer();
 
-					renderTargetProperties.__webglMultisampledFramebuffer = _gl.createFramebuffer();
-					renderTargetProperties.__webglColorRenderbuffer = _gl.createRenderbuffer();
+				_gl.bindRenderbuffer( _gl.RENDERBUFFER, renderTargetProperties.__webglColorRenderbuffer );
 
-					_gl.bindRenderbuffer( _gl.RENDERBUFFER, renderTargetProperties.__webglColorRenderbuffer );
+				const glFormat = utils.convert( texture.format, texture.encoding );
+				const glType = utils.convert( texture.type );
+				const glInternalFormat = getInternalFormat( texture.internalFormat, glFormat, glType, texture.encoding );
+				const samples = getRenderTargetSamples( renderTarget );
+				_gl.renderbufferStorageMultisample( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
 
-					const glFormat = utils.convert( texture.format, texture.encoding );
-					const glType = utils.convert( texture.type );
-					const glInternalFormat = getInternalFormat( texture.internalFormat, glFormat, glType, texture.encoding );
-					const samples = getRenderTargetSamples( renderTarget );
-					_gl.renderbufferStorageMultisample( _gl.RENDERBUFFER, samples, glInternalFormat, renderTarget.width, renderTarget.height );
+				state.bindFramebuffer( _gl.FRAMEBUFFER, renderTargetProperties.__webglMultisampledFramebuffer );
+				_gl.framebufferRenderbuffer( _gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0, _gl.RENDERBUFFER, renderTargetProperties.__webglColorRenderbuffer );
+				_gl.bindRenderbuffer( _gl.RENDERBUFFER, null );
 
-					state.bindFramebuffer( _gl.FRAMEBUFFER, renderTargetProperties.__webglMultisampledFramebuffer );
-					_gl.framebufferRenderbuffer( _gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0, _gl.RENDERBUFFER, renderTargetProperties.__webglColorRenderbuffer );
-					_gl.bindRenderbuffer( _gl.RENDERBUFFER, null );
+				if ( renderTarget.depthBuffer ) {
 
-					if ( renderTarget.depthBuffer ) {
-
-						renderTargetProperties.__webglDepthRenderbuffer = _gl.createRenderbuffer();
-						setupRenderBufferStorage( renderTargetProperties.__webglDepthRenderbuffer, renderTarget, true );
-
-					}
-
-					state.bindFramebuffer( _gl.FRAMEBUFFER, null );
-
-
-				} else {
-
-					console.warn( 'THREE.WebGLRenderer: WebGLMultisampleRenderTarget can only be used with WebGL2.' );
+					renderTargetProperties.__webglDepthRenderbuffer = _gl.createRenderbuffer();
+					setupRenderBufferStorage( renderTargetProperties.__webglDepthRenderbuffer, renderTarget, true );
 
 				}
+
+				state.bindFramebuffer( _gl.FRAMEBUFFER, null );
 
 			}
 
@@ -1624,18 +1614,15 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			let glTextureType = _gl.TEXTURE_2D;
 
-			if ( isRenderTarget3D ) {
-
-				// Render targets containing layers, i.e: Texture 3D and 2d arrays
+			if ( renderTarget.isWebGL3DRenderTarget || renderTarget.isWebGLArrayRenderTarget ) {
 
 				if ( isWebGL2 ) {
 
-					const isTexture3D = texture.isDataTexture3D;
-					glTextureType = isTexture3D ? _gl.TEXTURE_3D : _gl.TEXTURE_2D_ARRAY;
+					glTextureType = renderTarget.isWebGL3DRenderTarget ? _gl.TEXTURE_3D : _gl.TEXTURE_2D_ARRAY;
 
 				} else {
 
-					console.warn( 'THREE.DataTexture3D and THREE.DataTexture2DArray only supported with WebGL2.' );
+					console.error( 'THREE.WebGLTextures: THREE.Data3DTexture and THREE.DataArrayTexture only supported with WebGL2.' );
 
 				}
 
@@ -1692,52 +1679,45 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	function updateMultisampleRenderTarget( renderTarget ) {
 
-		if ( renderTarget.useRenderbuffer ) {
+		if ( ( isWebGL2 && renderTarget.samples > 0 ) && useMultisampledRTT( renderTarget ) === false ) {
 
-			if ( isWebGL2 ) {
+			const width = renderTarget.width;
+			const height = renderTarget.height;
+			let mask = _gl.COLOR_BUFFER_BIT;
+			const invalidationArray = [ _gl.COLOR_ATTACHMENT0 ];
+			const depthStyle = renderTarget.stencilBuffer ? _gl.DEPTH_STENCIL_ATTACHMENT : _gl.DEPTH_ATTACHMENT;
 
-				const width = renderTarget.width;
-				const height = renderTarget.height;
-				let mask = _gl.COLOR_BUFFER_BIT;
-				const invalidationArray = [ _gl.COLOR_ATTACHMENT0 ];
-				const depthStyle = renderTarget.stencilBuffer ? _gl.DEPTH_STENCIL_ATTACHMENT : _gl.DEPTH_ATTACHMENT;
+			if ( renderTarget.depthBuffer ) {
 
-				if ( renderTarget.depthBuffer ) {
-
-					invalidationArray.push( depthStyle );
-
-				}
-
-				if ( ! renderTarget.ignoreDepthForMultisampleCopy ) {
-
-					if ( renderTarget.depthBuffer ) mask |= _gl.DEPTH_BUFFER_BIT;
-					if ( renderTarget.stencilBuffer ) mask |= _gl.STENCIL_BUFFER_BIT;
-
-				}
-
-				const renderTargetProperties = properties.get( renderTarget );
-
-				state.bindFramebuffer( _gl.READ_FRAMEBUFFER, renderTargetProperties.__webglMultisampledFramebuffer );
-				state.bindFramebuffer( _gl.DRAW_FRAMEBUFFER, renderTargetProperties.__webglFramebuffer );
-
-				if ( renderTarget.ignoreDepthForMultisampleCopy ) {
-
-					_gl.invalidateFramebuffer( _gl.READ_FRAMEBUFFER, [ depthStyle ] );
-					_gl.invalidateFramebuffer( _gl.DRAW_FRAMEBUFFER, [ depthStyle ] );
-
-				}
-
-				_gl.blitFramebuffer( 0, 0, width, height, 0, 0, width, height, mask, _gl.NEAREST );
-				_gl.invalidateFramebuffer( _gl.READ_FRAMEBUFFER, invalidationArray );
-
-				state.bindFramebuffer( _gl.READ_FRAMEBUFFER, null );
-				state.bindFramebuffer( _gl.DRAW_FRAMEBUFFER, renderTargetProperties.__webglMultisampledFramebuffer );
-
-			} else {
-
-				console.warn( 'THREE.WebGLRenderer: WebGLMultisampleRenderTarget can only be used with WebGL2.' );
+				invalidationArray.push( depthStyle );
 
 			}
+
+			const renderTargetProperties = properties.get( renderTarget );
+			const ignoreDepthValues = ( renderTargetProperties.__ignoreDepthValues !== undefined ) ? renderTargetProperties.__ignoreDepthValues : false;
+
+			if ( ignoreDepthValues === false ) {
+
+				if ( renderTarget.depthBuffer ) mask |= _gl.DEPTH_BUFFER_BIT;
+				if ( renderTarget.stencilBuffer ) mask |= _gl.STENCIL_BUFFER_BIT;
+
+			}
+
+			state.bindFramebuffer( _gl.READ_FRAMEBUFFER, renderTargetProperties.__webglMultisampledFramebuffer );
+			state.bindFramebuffer( _gl.DRAW_FRAMEBUFFER, renderTargetProperties.__webglFramebuffer );
+
+			if ( ignoreDepthValues === true ) {
+
+				_gl.invalidateFramebuffer( _gl.READ_FRAMEBUFFER, [ depthStyle ] );
+				_gl.invalidateFramebuffer( _gl.DRAW_FRAMEBUFFER, [ depthStyle ] );
+
+			}
+
+			_gl.blitFramebuffer( 0, 0, width, height, 0, 0, width, height, mask, _gl.NEAREST );
+			_gl.invalidateFramebuffer( _gl.READ_FRAMEBUFFER, invalidationArray );
+
+			state.bindFramebuffer( _gl.READ_FRAMEBUFFER, null );
+			state.bindFramebuffer( _gl.DRAW_FRAMEBUFFER, renderTargetProperties.__webglMultisampledFramebuffer );
 
 		}
 
@@ -1745,8 +1725,15 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	function getRenderTargetSamples( renderTarget ) {
 
-		return ( isWebGL2 && ( renderTarget.useRenderbuffer || renderTarget.useRenderToTexture ) ) ?
-			Math.min( maxSamples, renderTarget.samples ) : 0;
+		return Math.min( maxSamples, renderTarget.samples );
+
+	}
+
+	function useMultisampledRTT( renderTarget ) {
+
+		const renderTargetProperties = properties.get( renderTarget );
+
+		return isWebGL2 && renderTarget.samples > 0 && extensions.has( 'WEBGL_multisampled_render_to_texture' ) === true && renderTargetProperties.__useRenderToTexture !== false;
 
 	}
 
@@ -1824,50 +1811,6 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	}
 
-	// backwards compatibility
-
-	let warnedTexture2D = false;
-	let warnedTextureCube = false;
-
-	function safeSetTexture2D( texture, slot ) {
-
-		if ( texture.isWebGLRenderTarget ) {
-
-			if ( warnedTexture2D === false ) {
-
-				console.warn( 'THREE.WebGLTextures.safeSetTexture2D: don\'t use render targets as textures. Use their .texture property instead.' );
-				warnedTexture2D = true;
-
-			}
-
-			texture = texture.texture;
-
-		}
-
-		setTexture2D( texture, slot );
-
-	}
-
-	function safeSetTextureCube( texture, slot ) {
-
-		if ( texture.isWebGLCubeRenderTarget ) {
-
-			if ( warnedTextureCube === false ) {
-
-				console.warn( 'THREE.WebGLTextures.safeSetTextureCube: don\'t use cube render targets as textures. Use their .texture property instead.' );
-				warnedTextureCube = true;
-
-			}
-
-			texture = texture.texture;
-
-		}
-
-
-		setTextureCube( texture, slot );
-
-	}
-
 	//
 
 	this.allocateTextureUnit = allocateTextureUnit;
@@ -1883,9 +1826,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 	this.updateMultisampleRenderTarget = updateMultisampleRenderTarget;
 	this.setupDepthRenderbuffer = setupDepthRenderbuffer;
 	this.setupFrameBufferTexture = setupFrameBufferTexture;
-
-	this.safeSetTexture2D = safeSetTexture2D;
-	this.safeSetTextureCube = safeSetTextureCube;
+	this.useMultisampledRTT = useMultisampledRTT;
 
 }
 

@@ -49,7 +49,7 @@ const isNum = s => intRE.test(s);
 
 const quotesRE = /^".*"$/;
 function trimQuotes(s) {
-  return quotesRE.test(s) ? s.substr(s, s.length - 2) : s;
+  return quotesRE.test(s) ? s.slice(1, -1) : s;
 }
 
 const splitToNumbers = s => s.split(' ').map(parseFloat);
@@ -82,17 +82,15 @@ export function parseCSP(str) {
       break;
     }
     if (line.startsWith('TITLE ')) {
-      lut.name = trimQuotes(line.substr(6).trim());
+      lut.name = trimQuotes(line.slice(6).trim());
     }
   }
 
   // read ranges
-  const ranges = [];
   for (let i = 0; i < 3; ++i) {
     ++lineNdx;
     const input = splitToNumbers(lines[lineNdx++]);
     const output = splitToNumbers(lines[lineNdx++]);
-    ranges.push({input, output});
     if (input.length !== 2 || output.length !== 2 ||
         input[0] !== 0 || input[1] !==  1 ||
         output[0] !== 0 || output[1] !== 1) {

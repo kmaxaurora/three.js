@@ -1,6 +1,6 @@
 import { LabelElement, ToggleInput, SelectInput } from '../../libs/flow.module.js';
 import { BaseNode, onNodeValidElement } from '../core/BaseNode.js';
-import { TextureNode, UVNode } from '../../renderers/nodes/Nodes.js';
+import { TextureNode, UVNode } from 'three-nodes/Nodes.js';
 import { Texture, TextureLoader, RepeatWrapping, ClampToEdgeWrapping, MirroredRepeatWrapping } from 'three';
 
 const fileTexture = new WeakMap();
@@ -134,7 +134,7 @@ export class TextureEditor extends BaseNode {
 			texture.wrapS = Number( this.wrapSInput.getValue() );
 			texture.wrapT = Number( this.wrapTInput.getValue() );
 			texture.flipY = this.flipYInput.getValue();
-			texture.needsUpdate = true;
+			texture.dispose();
 
 			this.invalidate();
 
